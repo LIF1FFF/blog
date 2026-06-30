@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-box, .admin-panel {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 40px;
+      width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .admin-panel { width: 900px; max-width: 95vw; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: #fff; }
+    .subtitle { font-size: 14px; color: #888; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; margin-top: 16px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 14px;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #7c3aed; }
+    textarea { resize: vertical; min-height: 300px; font-family: monospace; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.2s;
+    }
+    button:hover { background: #6d28d9; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    .error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
+    .success { color: #22c55e; font-size: 13px; margin-top: 8px; display: none; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #333; }
+    .tab {
+      padding: 8px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: #888;
+      font-size: 14px;
+    }
+    .tab.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .post-list { margin-top: 16px; }
+    .post-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #252525;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .post-item .info { flex: 1; }
+    .post-item .title { font-size: 15px; color: #fff; }
+    .post-item .meta { font-size: 12px; color: #888; margin-top: 4px; }
+    .post-item .actions { display: flex; gap: 8px; }
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      width: auto;
+      margin-top: 0;
+    }
+    .btn-edit { background: #3b82f6; color: #fff; }
+    .btn-edit:hover { background: #2563eb; }
+    .btn-delete { background: #ef4444; color: #fff; }
+    .btn-delete:hover { background: #dc2626; }
+    .btn-new { background: #22c55e; color: #fff; margin-bottom: 16px; }
+    .btn-new:hover { background: #16a34a; }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 999;
+      animation: slideIn 0.3s ease;
+    }
+    .toast.success { background: #166534; color: #86efac; }
+    .toast.error { background: #7f1d1d; color: #fca5a5; }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .logout {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: none;
+      border: 1px solid #444;
+      color: #888;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      width: auto;
+      margin-top: 0;
+    }
+    .logout:hover { background: #252525; color: #fff; }
+    .config-area {
+      background: #252525;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .config-area label { margin-top: 0; }
+    .config-area input { margin-bottom: 8px; }
+    .status-bar {
+      font-size: 12px;
+      color: #666;
+      margin-top: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="login-page" class="login-box">
+    <h1>🔐 Blog Admin</h1>
+    <p class="subtitle">登录以管理你的博客</p>
+    <label>密码</label>
+    <input type="password" id="login-pwd" placeholder="输入管理密码" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">登 录</button>
+    <p class="error" id="login-error">密码错误</p>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-page" class="admin-panel" style="display:none; position:relative;">
+    <button class="logout" onclick="logout()">退出</button>
+    <h1>📝 博客管理</h1>
+    <p class="subtitle">管理文章 & 发布到 EdgeOne</p>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('list')">📋 文章列表</div>
+      <div class="tab" onclick="switchTab('edit')">✍️ 写文章</div>
+      <div class="tab" onclick="switchTab('config')">⚙️ 设置</div>
+    </div>
+
+    <!-- Post List -->
+    <div id="tab-list" class="tab-content active">
+      <button class="btn-sm btn-new" onclick="newPost()">+ 新建文章</button>
+      <div class="post-list" id="post-list">加载中...</div>
+      <p class="status-bar" id="deploy-status"></p>
+    </div>
+
+    <!-- Editor -->
+    <div id="tab-edit" class="tab-content">
+      <label>标题 *</label>
+      <input type="text" id="post-title" placeholder="文章标题">
+      <label>分类</label>
+      <input type="text" id="post-category" placeholder="教程 / 资源" value="教程">
+      <label>标签（逗号分隔）</label>
+      <input type="text" id="post-tags" placeholder="iOS, 签名, 教程">
+      <label>内容（Markdown）*</label>
+      <textarea id="post-content" placeholder="在这里写 Markdown 内容..."></textarea>
+      <input type="hidden" id="post-abbrlink">
+      <input type="hidden" id="post-filename">
+      <input type="hidden" id="post-sha">
+      <button onclick="savePost()" id="save-btn">💾 保存并发布</button>
+      <p class="success" id="save-success">保存成功！正在部署...</p>
+      <p class="error" id="save-error">保存失败</p>
+    </div>
+
+    <!-- Config -->
+    <div id="tab-config" class="tab-content">
+      <div class="config-area">
+        <label>GitHub Token</label>
+        <input type="password" id="config-token" placeholder="ghp_xxxxxxxxxxxx">
+        <p style="font-size:12px;color:#888;">需要 repo 权限。在 GitHub Settings → Developer settings → Personal access tokens 创建</p>
+        <label>仓库所有者</label>
+        <input type="text" id="config-owner" placeholder="LIF1FFF">
+        <label>仓库名</label>
+        <input type="text" id="config-repo" placeholder="blog">
+        <label>管理密码</label>
+        <input type="password" id="config-pwd" placeholder="修改登录密码">
+      </div>
+      <button onclick="saveConfig()">💾 保存设置</button>
+      <p class="success" id="config-success">设置已保存</p>
+    </div>
+  </div>
+
+  <script>
+    // ========== Config ==========
+    const DEFAULT_PWD = 'admin123';
+    const DEFAULT_OWNER = 'LIF1FFF';
+    const DEFAULT_REPO = 'blog';
+    const STORAGE_KEY = 'blog_admin_config';
+
+    function getConfig() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; }
+    }
+    function setConfig(obj) {
+      const cfg = getConfig();
+      Object.assign(cfg, obj);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    }
+
+    // ========== Auth ==========
+    function login() {
+      const pwd = document.getElementById('login-pwd').value;
+      const cfg = getConfig();
+      const correctPwd = cfg.pwd || DEFAULT_PWD;
+      if (pwd === correctPwd) {
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('admin-page').style.display = 'block';
+        document.getElementById('login-error').style.display = 'none';
+        document.getElementById('login-pwd').value = '';
+        loadPosts();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    }
+
+    function logout() {
+      document.getElementById('login-page').style.display = 'block';
+      document.getElementById('admin-page').style.display = 'none';
+    }
+
+    // ========== Tabs ==========
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+      document.getElementById(`tab-${name}`).classList.add('active');
+      if (name === 'list') loadPosts();
+    }
+
+    function newPost() {
+      document.getElementById('post-title').value = '';
+      document.getElementById('post-category').value = '教程';
+      document.getElementById('post-tags').value = '';
+      document.getElementById('post-content').value = '';
+      document.getElementById('post-abbrlink').value = '';
+      document.getElementById('post-filename').value = '';
+      document.getElementById('post-sha').value = '';
+      document.getElementById('save-success').style.display = 'none';
+      document.getElementById('save-error').style.display = 'none';
+      switchTab('edit');
+    }
+
+    // ========== GitHub API ==========
+    function getApiBase() {
+      const cfg = getConfig();
+      const owner = cfg.owner || DEFAULT_OWNER;
+      const repo = cfg.repo || DEFAULT_REPO;
+      return `https://api.github.com/repos/${owner}/${repo}`;
+    }
+
+    function getHeaders() {
+      const cfg = getConfig();
+      return {
+        'Authorization': `token ${cfg.token || ''}`,
+        'Accept': 'application/vnd.github.v3+json'
+      };
+    }
+
+    async function loadPosts() {
+      const list = document.getElementById('post-list');
+      list.innerHTML = '加载中...';
+      try {
+        const resp = await fetch(`${getApiBase()}/contents/source/_posts`, { headers: getHeaders() });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const files = await resp.json();
+        if (!Array.isArray(files)) throw new Error('Invalid response');
+
+        // Parse front-matter for each post
+        const posts = [];
+        for (const f of files) {
+          if (!f.name.endsWith('.md')) continue;
+          const contentResp = await fetch(f.url, { headers: getHeaders() });
+          if (!contentResp.ok) continue;
+          const fileData = await contentResp.json();
+          const content = atob(fileData.content);
+          const fm = parseFrontMatter(content);
+          posts.push({
+            name: f.name,
+            sha: f.sha,
+            title: fm.title || f.name.replace('.md', ''),
+            abbrlink: fm.abbrlink || '',
+            date: fm.date || '',
+            category: (fm.categories || []).join(', ') || '',
+            tags: (fm.tags || []).join(', '),
+            content: fm.body || '',
+            rawContent: content
+          });
+        }
+
+        // Sort by abbrlink
+        posts.sort((a, b) => (parseInt(a.abbrlink) || 0) - (parseInt(b.abbrlink) || 0));
+
+        if (posts.length === 0) {
+          list.innerHTML = '<p style="color:#888;">暂无文章</p>';
+          return;
+        }
+
+        list.innerHTML = posts.map(p => `
+          <div class="post-item">
+            <div class="info">
+              <div class="title">#${p.abbrlink} ${escapeHtml(p.title)}</div>
+              <div class="meta">${p.date} | ${p.category} | ${p.tags}</div>
+            </div>
+            <div class="actions">
+              <button class="btn-sm btn-edit" onclick="editPost('${escapeAttr(p.name)}','${escapeAttr(p.sha)}','${escapeAttr(p.title)}','${escapeAttr(p.abbrlink)}','${escapeAttr(p.category)}','${escapeAttr(p.tags)}',\`${escapeBacktick(p.content)}\`)">编辑</button>
+              <button class="btn-sm btn-delete" onclick="deletePost('${escapeAttr(p.name)}','${escapeAttr(p.sha)}')">删除</button>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) {
+        list.innerHTML = `<p style="color:#ef4444;">加载失败: ${escapeHtml(e.message)}。请检查 Token 设置。</p>`;
+      }
+    }
+
+    function parseFrontMatter(raw) {
+      const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+      if (!match) return { body: raw };
+      const fmText = match[1];
+      const body = match[2];
+      const result = { body };
+      fmText.split('\n').forEach(line => {
+        const m = line.match(/^(\w+):\s*(.*)$/);
+        if (m) {
+          const key = m[1];
+          let val = m[2].trim();
+          if (val.startsWith('[') && val.endsWith(']')) {
+            result[key] = val.slice(1, -1).split(',').map(s => s.trim());
+          } else {
+            result[key] = val;
+          }
+        }
+      });
+      return result;
+    }
+
+    function buildFrontMatter(title, abbrlink, category, tags, date) {
+      const tagList = tags.split(',').map(s => s.trim()).filter(Boolean);
+      return `---
+title: ${title}
+abbrlink: ${abbrlink}
+date: ${date || new Date().toISOString().split('T')[0]}
+tags: [${tagList.join(', ')}]
+categories: [${category || '教程'}]
+---`;
+    }
+
+    function editPost(filename, sha, title, abbrlink, category, tags, content) {
+      document.getElementById('post-title').value = unescapeHtml(title);
+      document.getElementById('post-category').value = unescapeHtml(category);
+      document.getElementById('post-tags').value = unescapeHtml(tags);
+      document.getElementById('post-content').value = content;
+      document.getElementById('post-abbrlink').value = abbrlink;
+      document.getElementById('post-filename').value = filename;
+      document.getElementById('post-sha').value = sha;
+      document.getElementById('save-success').style.display = 'none';
+      document.getElementById('save-error').style.display = 'none';
+      switchTab('edit');
+    }
+
+    async function savePost() {
+      const title = document.getElementById('post-title').value.trim();
+      const category = document.getElementById('post-category').value.trim();
+      const tags = document.getElementById('post-tags').value.trim();
+      const content = document.getElementById('post-content').value.trim();
+      let abbrlink = document.getElementById('post-abbrlink').value.trim();
+      let filename = document.getElementById('post-filename').value.trim();
+      const sha = document.getElementById('post-sha').value.trim();
+
+      if (!title || !content) {
+        showError('save-error', '标题和内容不能为空');
+        return;
+      }
+
+      // Auto-generate filename if new
+      if (!filename) {
+        filename = title.replace(/[\/\\:*?"<>|]/g, '-') + '.md';
+      }
+
+      // Auto-generate abbrlink if new
+      if (!abbrlink) {
+        abbrlink = String(Date.now()).slice(-6);
+      }
+
+      const date = new Date().toISOString().split('T')[0];
+      const fm = buildFrontMatter(title, abbrlink, category, tags, date);
+      const fileContent = fm + '\n\n' + content;
+
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
+      document.getElementById('save-error').style.display = 'none';
+
+      try {
+        const body = {
+          message: sha ? `update: ${title}` : `new: ${title}`,
+          content: btoa(unescape(encodeURIComponent(fileContent))),
+          branch: 'main'
+        };
+        if (sha) body.sha = sha;
+
+        const method = sha ? 'PUT' : 'PUT';
+        const resp = await fetch(`${getApiBase()}/contents/source/_posts/${encodeURIComponent(filename)}`, {
+          method: method,
+          headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.message || `HTTP ${resp.status}`);
+        }
+
+        document.getElementById('save-success').style.display = 'block';
+        document.getElementById('post-sha').value = (await resp.json()).content.sha;
+        saveBtn.textContent = '✅ 已发布！';
+        showToast('文章已发布，EdgeOne 将自动部署');
+        setTimeout(() => {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 保存并发布';
+          document.getElementById('save-success').style.display = 'none';
+        }, 3000);
+      } catch(e) {
+        showError('save-error', `保存失败: ${e.message}`);
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 保存并发布';
+      }
+    }
+
+    async function deletePost(filename, sha) {
+      if (!confirm(`确定删除「${filename}」？此操作不可撤销。`)) return;
+      try {
+        const resp = await fetch(`${getApiBase()}/contents/source/_posts/${encodeURIComponent(filename)}`, {
+          method: 'DELETE',
+          headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: `delete: ${filename}`, sha: sha, branch: 'main' })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        showToast('文章已删除');
+        loadPosts();
+      } catch(e) {
+        showToast('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    // ========== Config ==========
+    function saveConfig() {
+      const token = document.getElementById('config-token').value.trim();
+      const owner = document.getElementById('config-owner').value.trim();
+      const repo = document.getElementById('config-repo').value.trim();
+      const pwd = document.getElementById('config-pwd').value.trim();
+      if (token) setConfig({ token });
+      if (owner) setConfig({ owner });
+      if (repo) setConfig({ repo });
+      if (pwd) setConfig({ pwd });
+      document.getElementById('config-success').style.display = 'block';
+      document.getElementById('config-token').value = '';
+      document.getElementById('config-pwd').value = '';
+      setTimeout(() => document.getElementById('config-success').style.display = 'none', 2000);
+      showToast('设置已保存');
+    }
+
+    // ========== Helpers ==========
+    function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function unescapeHtml(s) { return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"'); }
+    function escapeAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+    function escapeBacktick(s) { return s.replace(/`/g,'\\`').replace(/\$/g,'\\$'); }
+
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    function showToast(msg, type='success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ========== Init ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      const cfg = getConfig();
+      document.getElementById('config-owner').value = cfg.owner || DEFAULT_OWNER;
+      document.getElementById('config-repo').value = cfg.repo || DEFAULT_REPO;
+    });
+  </script>
+</body>
+</html>
