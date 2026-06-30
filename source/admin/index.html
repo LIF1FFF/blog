@@ -296,7 +296,7 @@
           const contentResp = await fetch(f.url, { headers: getHeaders() });
           if (!contentResp.ok) continue;
           const fileData = await contentResp.json();
-          const content = atob(fileData.content);
+          const content = decodeBase64UTF8(fileData.content);
           const fm = parseFrontMatter(content);
           posts.push({
             name: f.name,
@@ -484,6 +484,12 @@ categories: [${category || '教程'}]
     }
 
     // ========== Helpers ==========
+    function decodeBase64UTF8(b64) {
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }
     function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function unescapeHtml(s) { return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"'); }
     function escapeAttr(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
