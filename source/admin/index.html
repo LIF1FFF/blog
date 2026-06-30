@@ -227,6 +227,7 @@
       const cfg = getConfig();
       const correctPwd = cfg.pwd || DEFAULT_PWD;
       if (pwd === correctPwd) {
+        sessionStorage.setItem('blog_admin_logged', '1');
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('admin-page').style.display = 'block';
         document.getElementById('login-error').style.display = 'none';
@@ -238,8 +239,16 @@
     }
 
     function logout() {
+      sessionStorage.removeItem('blog_admin_logged');
       document.getElementById('login-page').style.display = 'block';
       document.getElementById('admin-page').style.display = 'none';
+    }
+
+    // 页面加载时检查登录状态
+    if (sessionStorage.getItem('blog_admin_logged') === '1') {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('admin-page').style.display = 'block';
+      setTimeout(loadPosts, 100);
     }
 
     // ========== Tabs ==========
