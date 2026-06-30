@@ -311,6 +311,7 @@
     let _allPosts = [];
     let _currentPage = 1;
     const PAGE_SIZE = 10;
+    let _postDataMap = {};
 
     async function loadPosts() {
       const list = document.getElementById('post-list');
@@ -362,15 +363,19 @@
       const start = (_currentPage - 1) * PAGE_SIZE;
       const pagePosts = _allPosts.slice(start, start + PAGE_SIZE);
 
-      let html = pagePosts.map(p => `
+      // Store post data by index, avoid inline onclick escaping issues
+      _postDataMap = {};
+      pagePosts.forEach((p, i) => { _postDataMap[i] = p; });
+
+      let html = pagePosts.map((p, i) => `
         <div class="post-item">
           <div class="info">
             <div class="title">#${p.abbrlink} ${escapeHtml(p.title)}</div>
             <div class="meta">${p.date} | ${p.category} | ${p.tags}</div>
           </div>
           <div class="actions">
-            <button class="btn-sm btn-edit" onclick="editPost('${escapeAttr(p.name)}','${escapeAttr(p.sha)}','${escapeAttr(p.title)}','${escapeAttr(p.abbrlink)}','${escapeAttr(p.category)}','${escapeAttr(p.tags)}',\`${escapeBacktick(p.content)}\`)">编辑</button>
-            <button class="btn-sm btn-delete" onclick="deletePost('${escapeAttr(p.name)}','${escapeAttr(p.sha)}')">删除</button>
+            <button class="btn-sm btn-edit" data-post-idx="${i}">编辑</button>
+            <button class="btn-sm btn-delete" data-post-idx="${i}">删除</button>
           </div>
         </div>
       `).join('');
@@ -392,6 +397,21 @@
       renderPostList();
       document.getElementById('post-list').scrollIntoView({ behavior: 'smooth' });
     }
+
+    // Event delegation for edit/delete buttons (avoids inline onclick escaping issues)
+    document.getElementById('post-list').addEventListener('click', function(e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const idx = btn.getAttribute('data-post-idx');
+      if (idx === null) return;
+      const p = _postDataMap[idx];
+      if (!p) return;
+      if (btn.classList.contains('btn-edit')) {
+        editPost(p.name, p.sha, p.title, p.abbrlink, p.category, p.tags, p.content);
+      } else if (btn.classList.contains('btn-delete')) {
+        deletePost(p.name, p.sha);
+      }
+    });
 
     function parseFrontMatter(raw) {
       const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
